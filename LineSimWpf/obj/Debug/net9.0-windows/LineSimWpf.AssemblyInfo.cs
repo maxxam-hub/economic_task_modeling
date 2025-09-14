@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LineSimWpf")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c616039ef4487b3110095a23cf2c27be1012a12e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0de72f98d94692cb2fea9346dcda458e43cfa473")]
 [assembly: System.Reflection.AssemblyProductAttribute("LineSimWpf")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LineSimWpf")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
