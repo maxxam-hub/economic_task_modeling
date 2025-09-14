@@ -1,0 +1,14 @@
+E:\C#\economic task\economic_modeling\bin\Debug\net9.0\economic_modeling.exe
+E:\C#\economic task\economic_modeling\bin\Debug\net9.0\economic_modeling.deps.json
+E:\C#\economic task\economic_modeling\bin\Debug\net9.0\economic_modeling.runtimeconfig.json
+E:\C#\economic task\economic_modeling\bin\Debug\net9.0\economic_modeling.dll
+E:\C#\economic task\economic_modeling\bin\Debug\net9.0\economic_modeling.pdb
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.GeneratedMSBuildEditorConfig.editorconfig
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.AssemblyInfoInputs.cache
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.AssemblyInfo.cs
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.csproj.CoreCompileInputs.cache
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.dll
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\refint\economic_modeling.dll
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.pdb
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\economic_modeling.genruntimeconfig.cache
+E:\C#\economic task\economic_modeling\obj\Debug\net9.0\ref\economic_modeling.dll
