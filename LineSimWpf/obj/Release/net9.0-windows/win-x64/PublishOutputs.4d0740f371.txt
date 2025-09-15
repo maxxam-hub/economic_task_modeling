@@ -1,0 +1,7 @@
+E:\LineSimWpf_x64\LineSimWpf.pdb
+E:\LineSimWpf_x64\D3DCompiler_47_cor3.dll
+E:\LineSimWpf_x64\PenImc_cor3.dll
+E:\LineSimWpf_x64\PresentationNative_cor3.dll
+E:\LineSimWpf_x64\vcruntime140_cor3.dll
+E:\LineSimWpf_x64\wpfgfx_cor3.dll
+E:\LineSimWpf_x64\LineSimWpf.exe

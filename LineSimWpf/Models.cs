@@ -27,21 +27,43 @@ namespace LineSimWpf
 
     public static class Scheduler
     {
+        /// <summary>
+        /// Строит план обработки.
+        /// Если continuousFeed = true — подача на 1-й этап идёт непрерывно до planHorizonMinutes,
+        /// даже если финиши уходят за смену. completed — сколько машин завершили ПОСЛЕДНИЙ этап
+        /// в пределах shiftMinutes.
+        /// </summary>
         public static (List<JobStage> plan, int completed) BuildSchedule(
-            IList<Stage> stages, double shiftMinutes, TimeMode mode, int maxJobs = 1000, int? seed = 12345)
+            IList<Stage> stages,
+            double shiftMinutes,
+            TimeMode mode,
+            int maxJobs = 200000,
+            double? planHorizonMinutes = null,
+            bool continuousFeed = true,
+            int? seed = 12345)
         {
             var rng = seed.HasValue ? new Random(seed.Value) : new Random();
 
+            if (stages.Count == 0)
+                return (new List<JobStage>(), 0);
+
+            // Горизонт планирования: по умолчанию 2 смены
+            double feedUntil = planHorizonMinutes ?? (shiftMinutes * 2.0);
+
             var nextFree = stages.Select(s => new double[s.Centers]).ToArray();
             var plan = new List<JobStage>();
-            int done = 0;
+            int completedInShift = 0;
 
             for (int j = 0; j < maxJobs; j++)
             {
                 double t = 0.0;
+                double startFirstStage = 0.0;
+                double finishLast = 0.0;
+
                 for (int s = 0; s < stages.Count; s++)
                 {
                     var st = stages[s];
+
                     double dur = mode switch
                     {
                         TimeMode.Min => st.MinMinutes,
@@ -52,25 +74,41 @@ namespace LineSimWpf
                         _ => st.MinMinutes
                     };
 
-                    // ищем свободный пост
+                    // выбираем самый ранний свободный пост
                     int bestIdx = 0;
                     double best = nextFree[s][0];
                     for (int i = 1; i < nextFree[s].Length; i++)
                         if (nextFree[s][i] < best) { best = nextFree[s][i]; bestIdx = i; }
 
                     double start = Math.Max(t, best);
+                    if (s == 0) startFirstStage = start;
+
                     double finish = start + dur;
+                    finishLast = finish;
+
                     nextFree[s][bestIdx] = finish;
                     t = finish;
 
                     plan.Add(new JobStage(j, s, bestIdx, start, finish));
                 }
 
-                if (t <= shiftMinutes) done++;
-                else break;
+                if (finishLast <= shiftMinutes)
+                    completedInShift++;
+
+                // Условия остановки генерации заявок
+                if (!continuousFeed)
+                {
+                    // классическое поведение: как только финиш ушёл за смену — стоп
+                    if (finishLast > shiftMinutes) break;
+                }
+                else
+                {
+                    // непрерывная подача: продолжаем, пока старт на 1-м этапе в пределах горизонта
+                    if (startFirstStage > feedUntil) break;
+                }
             }
 
-            return (plan, done);
+            return (plan, completedInShift);
         }
     }
 }
