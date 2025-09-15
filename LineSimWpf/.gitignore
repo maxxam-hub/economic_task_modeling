@@ -1,0 +1,11 @@
+# .NET / Visual Studio / VS Code
+**/bin/
+**/obj/
+**/.vs/
+**/Debug/
+**/Release/
+*.user
+*.suo
+*.cache
+*.log
+*.pdb

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("economic_modeling")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e9543a7b77a9d000b84e1cd015afd3c4f4f6592f")]
 [assembly: System.Reflection.AssemblyProductAttribute("economic_modeling")]
 [assembly: System.Reflection.AssemblyTitleAttribute("economic_modeling")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

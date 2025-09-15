@@ -4,6 +4,8 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "economic_modeling", "economic_modeling\economic_modeling.csproj", "{B6EF8ACC-7D06-EA04-0907-D4B0880BD787}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LineSimWpf", "LineSimWpf\LineSimWpf.csproj", "{C7F46A8C-1620-DB23-D87D-A6CC5145932D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,11 +16,15 @@ Global
 		{B6EF8ACC-7D06-EA04-0907-D4B0880BD787}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6EF8ACC-7D06-EA04-0907-D4B0880BD787}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6EF8ACC-7D06-EA04-0907-D4B0880BD787}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7F46A8C-1620-DB23-D87D-A6CC5145932D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7F46A8C-1620-DB23-D87D-A6CC5145932D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7F46A8C-1620-DB23-D87D-A6CC5145932D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7F46A8C-1620-DB23-D87D-A6CC5145932D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {00525C97-84D8-471C-808F-EECED6ADC131}
+		SolutionGuid = {6B1B7D62-3ADA-4C37-9B30-80EDCE31A81A}
 	EndGlobalSection
 EndGlobal
