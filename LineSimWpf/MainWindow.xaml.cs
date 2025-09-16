@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -18,10 +19,10 @@ namespace LineSimWpf
         private DispatcherTimer _timer;
         private double _simTime;                         // минуты «на часах»
         private bool _running;
-        private System.Collections.Generic.List<JobStage> _plan = new();
+        private List<JobStage> _plan = new();
 
-        // полный лог: событие на каждом этапе = (время завершения, jobId, stageIndex)
-        private System.Collections.Generic.List<(double time, int jobId, int stageIndex)> _events = new();
+        // события: завершение каждого этапа = (время завершения, jobId, stageIndex)
+        private List<(double time, int jobId, int stageIndex)> _events = new();
         private int _evtPtr = 0;
 
         // геометрия «виртуального полотна» (масштабируется Viewbox'ом)
@@ -37,33 +38,29 @@ namespace LineSimWpf
             InitializeComponent();
             DataContext = this;
 
-            // Таблица — явная привязка источника
             StagesGrid.ItemsSource = Stages;
 
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
             _timer.Tick += _timer_Tick;
 
-            // Авто-пересчёт при изменениях
             Stages.CollectionChanged += Stages_CollectionChanged;
             SizeChanged += (_, __) => RedrawStatic();
             ModeBox.SelectionChanged += (_, __) => BuildPlanAndReset();
             ShiftBox.TextChanged += (_, __) => BuildPlanAndReset();
             HorizonBox.TextChanged += (_, __) => BuildPlanAndReset();
 
-            BuildPlanAndReset(); // старт: пустая схема и нулевые метрики
+            BuildPlanAndReset();
         }
 
-        // ——— вспомогательные ———
+        // ——— helpers ———
         private double ShiftMinutes() =>
             double.TryParse(ShiftBox.Text, out var v) ? v : 720;
 
-        // число смен (целое, из HorizonBox) и горизонт в минутах
         private int NumShifts()
         {
             if (int.TryParse(HorizonBox.Text, out var k) && k > 0) return k;
-            // запасной вариант: если ввели дробь — округлим вниз
             if (double.TryParse(HorizonBox.Text, out var kd) && kd > 0) return Math.Max(1, (int)Math.Floor(kd));
-            return 2;
+            return 1;
         }
         private double HorizonMinutes() => ShiftMinutes() * NumShifts();
 
@@ -78,7 +75,7 @@ namespace LineSimWpf
             };
         }
 
-        // ——— события коллекции/этапов ———
+        // ——— reactions ———
         private void Stages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null)
@@ -91,15 +88,12 @@ namespace LineSimWpf
 
         private void Stage_PropertyChanged(object? sender, PropertyChangedEventArgs e) => BuildPlanAndReset();
 
-        // ——— пересборка плана и сброс симуляции/лога ———
+        // ——— core: строим по-сменам БЕЗ переноса WIP ———
         private void BuildPlanAndReset()
         {
             if (Stages.Count == 0)
             {
-                _plan.Clear();
-                _events.Clear();
-                _evtPtr = 0;
-                _simTime = 0;
+                _plan.Clear(); _events.Clear(); _evtPtr = 0; _simTime = 0;
                 OutputBlock.Text = "0";
                 TimeBlock.Text = "t = 0.0 мин";
                 PerShiftList?.Items.Clear();
@@ -108,16 +102,38 @@ namespace LineSimWpf
                 return;
             }
 
-            var (plan, _) = Scheduler.BuildSchedule(
-                Stages.ToList(),
-                ShiftMinutes(),
-                CurrentMode(),
-                maxJobs: 200000,
-                planHorizonMinutes: HorizonMinutes(),   // моделируем k смен
-                continuousFeed: true                    // подача без отсечки
-            );
+            int shifts = Math.Max(1, NumShifts());
+            double shift = ShiftMinutes();
 
-            _plan = plan;
+            var bigPlan = new List<JobStage>();
+            var perShiftCounts = new List<int>();
+            int jobIdOffset = 0;
+
+            for (int i = 0; i < shifts; i++)
+            {
+                // моделируем КАЖДУЮ смену отдельно, без переноса WIP
+                var (plan, completed) = Scheduler.BuildSchedule(
+                    Stages.ToList(),
+                    shift,
+                    CurrentMode(),
+                    maxJobs: 200000,
+                    planHorizonMinutes: shift,  // равен смене
+                    continuousFeed: false,      // ОТСЕЧКА: никто не переносится
+                    seed: 12345 + i);
+
+                perShiftCounts.Add(completed);
+
+                double tOffset = i * shift;
+
+                // сдвигаем времена и jobId, чтобы склеить план по времени
+                int maxJobIdThis = plan.Any() ? plan.Max(p => p.JobId) + 1 : 0;
+                foreach (var js in plan)
+                    bigPlan.Add(new JobStage(js.JobId + jobIdOffset, js.StageIndex, js.CenterIndex,
+                                             js.Start + tOffset, js.Finish + tOffset));
+                jobIdOffset += maxJobIdThis;
+            }
+
+            _plan = bigPlan;
             _simTime = 0;
             _evtPtr = 0;
 
@@ -126,70 +142,35 @@ namespace LineSimWpf
                 .OrderBy(e => e.time)
                 .ToList();
 
-            // Готово за 1-ю смену (по последнему этапу) — финиши ≤ Shift
-            int lastStage = Stages.Count - 1;
-            int completedShift1 = _plan
-                .Where(js => js.StageIndex == lastStage && js.Finish <= ShiftMinutes())
-                .Select(js => js.JobId)
-                .Distinct()
-                .Count();
-            OutputBlock.Text = completedShift1.ToString();
+            // сводка: готово за 1-ю смену
+            OutputBlock.Text = (perShiftCounts.Count > 0 ? perShiftCounts[0] : 0).ToString();
             TimeBlock.Text = "t = 0.0 мин";
 
-            // Готово по каждой смене (1..NumShifts)
-            UpdatePerShiftSummary(lastStage);
+            // готово по сменам (по последнему этапу) — берём из perShiftCounts
+            PerShiftList?.Items.Clear();
+            for (int i = 0; i < perShiftCounts.Count; i++)
+                PerShiftList.Items.Add($"Смена {i + 1}: {perShiftCounts[i]}");
 
             LogList?.Items.Clear();
             RedrawStatic();
             RedrawDynamic();
         }
 
-        // расчёт «Готово по сменам»
-        private void UpdatePerShiftSummary(int lastStage)
-        {
-            PerShiftList?.Items.Clear();
-
-            double shift = ShiftMinutes();
-            int n = NumShifts();
-            if (n <= 0) n = 1;
-
-            // все финиш-времена на последнем этапе
-            var finishes = _plan
-                .Where(js => js.StageIndex == lastStage)
-                .Select(js => js.Finish)
-                .OrderBy(t => t)
-                .ToList();
-
-            for (int i = 0; i < n; i++)
-            {
-                double start = i * shift;
-                double end = (i + 1) * shift;
-
-                // считаем финиши в интервале (start, end] — чтобы не было двойного учёта границ
-                int count = finishes.Count(t => t > start && t <= end);
-                PerShiftList.Items.Add($"Смена {i + 1}: {count}");
-            }
-        }
-
-        // ——— таймер ———
+        // ——— timer ———
         private void _timer_Tick(object? sender, EventArgs e)
         {
-            double speed = Math.Max(0.1, SpeedSlider.Value); // до 100×
-            _simTime += 0.03 * speed * 60.0 / 60.0;          // минуты
+            double speed = Math.Max(0.1, SpeedSlider.Value);
+            _simTime += 0.03 * speed * 60.0 / 60.0; // минуты
 
-            // выводим события, время которых наступило
             while (_evtPtr < _events.Count && _events[_evtPtr].time <= _simTime)
             {
                 var (time, jobId, stageIndex) = _events[_evtPtr];
                 string stageName = (stageIndex >= 0 && stageIndex < Stages.Count)
                     ? Stages[stageIndex].Name
                     : $"Этап {stageIndex + 1}";
-
                 LogList.Items.Insert(0, $"t={time:F1} мин: Машина #{jobId + 1} прошла {stageName}");
                 _evtPtr++;
-
-                if (LogList.Items.Count > 400)
-                    LogList.Items.RemoveAt(LogList.Items.Count - 1);
+                if (LogList.Items.Count > 400) LogList.Items.RemoveAt(LogList.Items.Count - 1);
             }
 
             if (Stages.Count == 0) _running = false;
@@ -197,15 +178,15 @@ namespace LineSimWpf
             TimeBlock.Text = $"t = {_simTime:F1} мин";
             RedrawDynamic();
 
-            // бежим до конца выбранного горизонта
+            // теперь бежим только в пределах выбранного горизонта (N смен)
             if (_simTime > HorizonMinutes() + 1) _running = false;
             if (!_running) _timer.Stop();
         }
 
-        // ——— кнопки ———
+        // ——— UI actions ———
         private void StartPause_Click(object sender, RoutedEventArgs e)
         {
-            if (Stages.Count == 0) return; // нечего проигрывать
+            if (Stages.Count == 0) return;
             if (_running) { _running = false; _timer.Stop(); }
             else { _running = true; _timer.Start(); }
         }
@@ -229,7 +210,7 @@ namespace LineSimWpf
             }
         }
 
-        // ——— рисование статической схемы ———
+        // ——— drawing (static grid) ———
         private void RedrawStatic()
         {
             var canvas = StageCanvas;
@@ -245,14 +226,12 @@ namespace LineSimWpf
             int n = Stages.Count;
             int lanes = Stages.Sum(s => s.Centers);
 
-            // размеры «виртуального полотна»
             double contentW = XMargin * 2 + n * StageW + (n - 1) * Gap;
             double contentH = HeadTop + lanes * (LaneH + VGap) + 10;
 
             canvas.Width = contentW;
             canvas.Height = contentH;
 
-            // заголовки этапов
             for (int s = 0; s < n; s++)
             {
                 double x = XMargin + s * (StageW + Gap);
@@ -268,7 +247,6 @@ namespace LineSimWpf
                 canvas.Children.Add(tb);
             }
 
-            // полосы (каждый пост — дорожка)
             double y = HeadTop;
             int stageIdx = 0;
             foreach (var st in Stages)
@@ -306,16 +284,14 @@ namespace LineSimWpf
             }
         }
 
-        // ——— рисование активных «машин» ———
+        // ——— drawing (active jobs) ———
         private void RedrawDynamic()
         {
             if (Stages.Count == 0) { StageCanvas.Children.Clear(); return; }
 
-            // перерисуем сетку и наложим «машины»
             RedrawStatic();
 
-            // предрасчёт Y каждой полосы
-            var laneYs = new System.Collections.Generic.List<double>();
+            var laneYs = new List<double>();
             double y = HeadTop;
             foreach (var st in Stages)
             {
@@ -326,7 +302,6 @@ namespace LineSimWpf
                 }
             }
 
-            // активные операции
             foreach (var js in _plan)
             {
                 if (_simTime < js.Start || _simTime > js.Finish) continue;

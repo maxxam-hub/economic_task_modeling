@@ -47,7 +47,6 @@ namespace LineSimWpf
             if (stages.Count == 0)
                 return (new List<JobStage>(), 0);
 
-            // Горизонт планирования: по умолчанию 2 смены
             double feedUntil = planHorizonMinutes ?? (shiftMinutes * 2.0);
 
             var nextFree = stages.Select(s => new double[s.Centers]).ToArray();
